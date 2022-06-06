@@ -1,0 +1,101 @@
+# Dataset and Splits
+data_root: DATA
+dataset_class: pydgn.data.dataset.TUDatasetInterface
+dataset_name:  PROTEINS
+data_splits_file:  DATA_SPLITS/CHEMICAL/PROTEINS/PROTEINS_outer10_inner1.splits
+
+
+# Hardware
+device:  cpu
+max_cpus:  4
+max_gpus: 0
+gpus_per_task:  1
+
+
+# Data Loading
+dataset_getter: incremental_provider.IncrementalDataProvider
+data_loader:
+  class_name: torch_geometric.loader.DataLoader
+  args:
+    num_workers : 0
+    pin_memory: False
+
+
+# Reproducibility
+seed: 42
+
+
+# Experiment
+result_folder: RESULTS
+exp_name: icgmm_alpha_gamma_batch_embedding
+experiment: icgmm_embedding_task.EmbeddingiCGMMTask
+higher_results_are_better: True
+evaluate_every: 1
+final_training_runs: 1
+
+grid:
+  layer_config:
+    model: icgmm_batch.iCGMMBatch
+    embeddings_folder: iCGMM_FULL_AUTO_RESULTS/iCGMM_BATCH_EMBEDDINGS
+    checkpoint: False
+    batch_size:
+      - 1  # DO NOT CHANGE THIS
+    shuffle:
+      - False  # MUST STAY FALSE TO PRESERVE ORDERING OF NODES! OW IT WON'T WORK
+    previous_layers_to_use:
+      - "1"
+    concatenate_on_axis: -1 # ?xAxCcurr
+    #hyperprior: 1.  # hyper-prior of the prior distribution H. Works for Categorical for the moment. Use uniform prior
+    gamma_prior_params:
+      a:
+        - 1
+        #- 100
+        #- 0.01
+      b:
+        #- 1
+        #- 100
+        - 0.01
+    alpha_prior_params:
+      a:
+        - 1
+        # - 100
+        # - 0.01
+      b:
+        #- 1
+        #- 100
+        - 0.01
+    max_C: 100
+    max_layers:
+      - 20
+    emission_distribution:
+      class: bayesian_nonparametric.BNPCategoricalBatch
+      prior_params:
+        alpha: 1
+    unibigram:
+      - True
+    aggregation:
+      - sum
+      - mean
+    sample_neighboring_macrostate: # how to assign observation to a group 1,...,C_{l-1}
+      - False  # deterministic group choice based on most probable state
+    epochs:
+      - 100
+    engine:
+      - class_name: icgmm_engine.IncrementalGibbsSamplingEngine
+        args:
+          engine_callback: icgmm_engine_callback.iCGMMEngineCallback
+    loss:
+      - icgmm_loss.iCGMMLoss
+    optimizer:
+      - icgmm_optimizer.iCGMMOptimizer
+    scorer:
+      - class_name: pydgn.training.callback.metric.MultiScore
+        args:
+          # used at model selection time. Should be the one on which to perform early stopping
+          main_scorer: icgmm_score.iCGMMCompleteLikelihoodScore
+          likelihood2: icgmm_score.iCGMMCompleteLikelihoodScore2
+          C_scorer: icgmm_score.iCGMMCurrentStates
+          alpha_scorer: icgmm_score.iCGMMCurrentAlpha
+          gamma_scorer: icgmm_score.iCGMMCurrentGamma
+    #plotter:
+    #  - pydgn.training.callback.plotter.Plotter

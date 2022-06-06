@@ -1,0 +1,150 @@
+# Dataset and Splits
+data_root: DATA
+dataset_class: pydgn.data.dataset.TUDatasetInterface
+dataset_name:  IMDB-BINARY
+data_splits_file:  DATA_SPLITS/COLLABORATIVE_DEGREE/IMDB-BINARY/IMDB-BINARY_outer10_inner1.splits
+
+
+# Hardware
+device:  cpu
+max_cpus:  4
+max_gpus: 0
+gpus_per_task:  1
+
+
+# Data Loading
+dataset_getter: incremental_provider.IncrementalDataProvider
+data_loader:
+  class_name: torch_geometric.loader.DataLoader
+  args:
+    num_workers : 0
+    pin_memory: False
+
+
+# Reproducibility
+seed: 42
+
+
+# Experiment
+result_folder: RESULTS
+exp_name: icgmm_alpha_gamma_batch_classifier
+experiment: icgmm_classifier_task.ClassifieriCGMMTask
+higher_results_are_better: True
+evaluate_every: 1
+final_training_runs: 1
+
+
+grid:
+  layer_config:
+    model: icgmm_batch.iCGMMBatch
+    embeddings_folder: iCGMM_FULL_AUTO_RESULTS/iCGMM_BATCH_EMBEDDINGS
+    batch_size:
+      - 1
+    shuffle:
+      - False
+    previous_layers_to_use:
+      - "1"  # multiple layers: "1,2,4"
+    concatenate_on_axis: 1  # must be > 0
+    max_layers: 20
+    layers:
+      - 5
+      - 10
+      - 15
+      - 20
+    emission_distribution:
+      class: bayesian_nonparametric.BNPGaussianBatch
+      # dataset-dependent
+      prior_params:
+        mu0: 3
+        # lam0 controls variance of the mean. However, it depends on t=b0/a0
+        # variance of mean is b0/(lam0*a0)
+        lam0:
+          - 0.000001
+        # a0 & b0 control variance of the data. the expected variance is t=b0/a0
+        a0:
+          - 1
+        b0:
+          - 1
+          - 0.09  # all variance comprised between [mean+3*0.3, mean+3*0.3]
+    gamma_prior_params:
+      a:
+        - 1
+      b:
+        - 0.01
+    alpha_prior_params:
+      a:
+        - 1
+      b:
+        - 0.01
+    max_C: 100
+    predictor: null
+    # HERE TRY ALL COMBINATIONS, LEAVE THE REST AS IN THE OTHER EMBEDDINGS CONFIG FILE
+    unibigram:
+      - True
+    aggregation:
+      - sum
+      - mean
+    sample_neighboring_macrostate:
+      - False
+    epochs:
+      - 100
+    engine:
+      - class_name: icgmm_engine.IncrementalGibbsSamplingEngine
+        args:
+          engine_callback: icgmm_engine_callback.iCGMMEngineCallback
+    loss:
+      - icgmm_loss.iCGMMLoss
+    optimizer:
+      - icgmm_optimizer.iCGMMOptimizer
+    scorer:
+      - class_name: pydgn.training.callback.metric.MultiScore
+        args:
+          # used at model selection time. Should be the one on which to perform early stopping
+          main_scorer: icgmm_score.iCGMMCompleteLikelihoodScore
+          likelihood2: icgmm_score.iCGMMCompleteLikelihoodScore2
+          C_scorer: icgmm_score.iCGMMCurrentStates
+          alpha_scorer: icgmm_score.iCGMMCurrentAlpha
+          gamma_scorer: icgmm_score.iCGMMCurrentGamma
+    plotter:
+    arbitrary_function_config: # Define the information for the arbitrary function
+      shuffle: True
+      batch_size:
+        - 32
+      checkpoint: True
+
+      num_dataloader_workers: 0  # > 0 only with --debug option and GPU device
+      pin_memory: False  # True only with --debug option and GPU device
+      device: cpu
+      epochs:
+        - 2000
+      hidden_units:
+        - 32
+        - 128
+      optimizer:
+        - class_name: pydgn.training.callback.optimizer.Optimizer
+          args:
+            optimizer_class_name: torch.optim.Adam
+            lr:
+              - 0.001
+            weight_decay:
+              - 0.
+              - 0.0005
+      loss:
+        - pydgn.training.callback.metric.MulticlassClassification
+      scorer:
+        - pydgn.training.callback.metric.MulticlassAccuracy
+      predictor:
+        - predictor.SimpleMLPGraphPredictor
+      engine:
+        - pydgn.training.engine.TrainingEngine
+      early_stopper:
+        - class_name:
+            - pydgn.training.callback.early_stopping.PatienceEarlyStopper
+          args:
+            patience:
+              - 100
+            monitor: validation_Multiclass Accuracy # (train_,validation_)[name_of_the_scorer_or_loss_to_monitor]
+            mode: max
+            checkpoint: True
+      plotter:
+        - pydgn.training.callback.plotter.Plotter
