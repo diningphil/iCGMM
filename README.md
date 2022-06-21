@@ -16,7 +16,7 @@ This research software is provided as is. If you happen to use or modify this co
 This repo builds upon [PyDGN](https://github.com/diningphil/PyDGN), a framework to easily develop and test new DGNs.
 See how to construct your dataset and then train your model there.
 
-This repo assumes PyDGN 1.0.9 is used. Compatibility with future versions is not guaranteed.
+This repo assumes PyDGN 1.0.9 is used. Compatibility with future versions is not guaranteed, e.g., custom metrics need to be slightly modified starting from PyDGN 1.2.0.
 
 The evaluation is carried out in two steps:
 - Generate the unsupervised graph embeddings
