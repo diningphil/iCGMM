@@ -44,4 +44,4 @@ For instance:
 #### A few things to notice
 
 - The first script will store node embeddings in a folder specified in the configuration files. These can take space, so ensure you monitor disk usage
-- Be aware of the hardware and parallelism required in the configuration files. Refer to PyDGN if you don't know how to modify them.
+- Be aware of the hardware and parallelism required in the configuration files. Refer to PyDGN if you don't know how to modify them
